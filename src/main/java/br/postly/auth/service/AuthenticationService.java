@@ -19,7 +19,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class AuthService implements UserDetailsService {
+public class AuthenticationService implements UserDetailsService {
 
     private final UserRepository userRepository;
 

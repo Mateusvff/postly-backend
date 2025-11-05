@@ -3,7 +3,7 @@ package br.postly.auth.controller;
 import br.postly.auth.dto.request.LoginRequest;
 import br.postly.auth.dto.request.RegisterRequest;
 import br.postly.auth.dto.response.AuthResponse;
-import br.postly.auth.service.AuthService;
+import br.postly.auth.service.AuthenticationService;
 import br.postly.common.dto.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -26,9 +26,9 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
-public class AuthController {
+public class AuthenticationController {
 
-    private final AuthService authService;
+    private final AuthenticationService authService;
 
     @Operation(summary = "Register a new user", description = "Creates a new user with an email and password")
     @ApiResponses({

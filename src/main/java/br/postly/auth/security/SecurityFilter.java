@@ -1,7 +1,7 @@
 package br.postly.auth.security;
 
 import br.postly.auth.exceptions.InvalidTokenException;
-import br.postly.auth.service.AuthService;
+import br.postly.auth.service.AuthenticationService;
 import br.postly.auth.service.TokenService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -20,8 +20,8 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class SecurityFilter extends OncePerRequestFilter {
 
-    private final AuthService authService;
     private final TokenService tokenService;
+    private final AuthenticationService authService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
