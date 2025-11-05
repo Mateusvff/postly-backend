@@ -3,9 +3,7 @@ package br.postly.auth.controller;
 import br.postly.auth.dto.request.LoginRequest;
 import br.postly.auth.dto.request.RegisterRequest;
 import br.postly.auth.dto.response.AuthResponse;
-import br.postly.auth.model.User;
 import br.postly.auth.service.AuthService;
-import br.postly.auth.service.TokenService;
 import br.postly.common.dto.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -13,18 +11,15 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 @Tag(name = "Authentication", description = "Endpoints for user registration and login")
@@ -34,8 +29,6 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 public class AuthController {
 
     private final AuthService authService;
-    private final TokenService tokenService;
-    private final AuthenticationManager authenticationManager;
 
     @Operation(summary = "Register a new user", description = "Creates a new user with an email and password")
     @ApiResponses({
@@ -44,14 +37,13 @@ public class AuthController {
             @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping(value = "/register", produces = APPLICATION_JSON_VALUE, consumes = APPLICATION_JSON_VALUE)
-    public ResponseEntity<Void> register(@Validated @RequestBody RegisterRequest registerRequest) {
-        if (authService.isUserRegistered(registerRequest.email()))
+    public ResponseEntity<Void> register(@Valid @RequestBody RegisterRequest registerRequest) {
+        if (authService.isUserRegistered(registerRequest.email())) {
             return ResponseEntity.badRequest().build();
+        }
 
-        String encryptedPassword = new BCryptPasswordEncoder().encode(registerRequest.password());
-
-        authService.saveUser(registerRequest.email(), encryptedPassword);
-        return ResponseEntity.status(HttpStatus.CREATED).build();
+        authService.registerUser(registerRequest);
+        return ResponseEntity.status(CREATED).build();
     }
 
     @Operation(summary = "Authenticate user", description = "Authenticates with email and password and returns a JWT access token")
@@ -61,13 +53,8 @@ public class AuthController {
             @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping(value = "/login", produces = APPLICATION_JSON_VALUE, consumes = APPLICATION_JSON_VALUE)
-    public ResponseEntity<AuthResponse> login(@Validated @RequestBody LoginRequest loginRequest) {
-        var usernamePassword = new UsernamePasswordAuthenticationToken(loginRequest.email(), loginRequest.password());
-        var auth = authenticationManager.authenticate(usernamePassword);
-
-        var token = tokenService.generateToken((User) auth.getPrincipal());
-        AuthResponse authResponse = new AuthResponse(token);
-
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
+        AuthResponse authResponse = authService.authenticateUser(loginRequest);
         return ResponseEntity.ok().body(authResponse);
     }
 

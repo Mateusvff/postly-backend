@@ -1,5 +1,7 @@
 package br.postly.auth.service;
 
+import br.postly.auth.exceptions.AuthorizationException;
+import br.postly.auth.exceptions.InvalidTokenException;
 import br.postly.auth.model.User;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
@@ -9,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.Instant;
 
 @Service
@@ -22,33 +25,32 @@ public class TokenService {
 
     public String generateToken(User user) {
         try {
-            Algorithm algorithm = Algorithm.HMAC256(secret.getBytes());
+            Algorithm algorithm = Algorithm.HMAC256(secret);
             return JWT.create()
                     .withIssuer(POSTLY_ISSUER)
                     .withSubject(user.getEmail())
+                    .withIssuedAt(Instant.now())
                     .withExpiresAt(generateExpirationDate())
                     .sign(algorithm);
-
         } catch (JWTCreationException e) {
-            throw new RuntimeException("Error while generating token", e);
+            throw new AuthorizationException("Error generating access token: " + e.getMessage());
         }
     }
 
     public String validateToken(String token) {
         try {
-            Algorithm algorithm = Algorithm.HMAC256(secret.getBytes());
+            Algorithm algorithm = Algorithm.HMAC256(secret);
             return JWT.require(algorithm)
                     .withIssuer(POSTLY_ISSUER)
                     .build()
                     .verify(token)
                     .getSubject();
         } catch (JWTVerificationException e) {
-            return "";
+            throw new InvalidTokenException("Invalid or expired token: " + e.getMessage());
         }
     }
 
     private Instant generateExpirationDate() {
-        int AN_HOUR_MILLIS = 3600 * 1000;
-        return Instant.now().plusMillis(AN_HOUR_MILLIS);
+        return Instant.now().plus(Duration.ofHours(1));
     }
 }

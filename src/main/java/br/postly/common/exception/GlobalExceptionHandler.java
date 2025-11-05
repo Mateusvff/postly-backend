@@ -17,9 +17,10 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(WebException.class)
     public ResponseEntity<ErrorResponse> handleCustomException(WebException ex) {
+        ErrorResponse errorResponse = new ErrorResponse(Instant.now(), ex.getMessage());
         return ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ErrorResponse(Instant.now(), ex.getMessage()));
+                .status(ex.getHttpStatus())
+                .body(errorResponse);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

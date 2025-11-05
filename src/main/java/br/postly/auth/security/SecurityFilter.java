@@ -1,5 +1,6 @@
 package br.postly.auth.security;
 
+import br.postly.auth.exceptions.InvalidTokenException;
 import br.postly.auth.service.AuthService;
 import br.postly.auth.service.TokenService;
 import jakarta.servlet.FilterChain;
@@ -14,7 +15,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
@@ -30,26 +30,26 @@ public class SecurityFilter extends OncePerRequestFilter {
     }
 
     private void authenticateUser(HttpServletRequest request) {
-        Optional.ofNullable(recoverToken(request))
-                .ifPresent(token -> {
-                    String subject = tokenService.validateToken(token);
-                    if (!subject.isEmpty()) {
-                        UserDetails user = authService.loadUserByUsername(subject);
-                        var authentication = createAuthentication(user);
-                        SecurityContextHolder.getContext().setAuthentication(authentication);
-                    }
-                });
+        String accessToken = extractAccessToken(request);
+
+        String email = tokenService.validateToken(accessToken);
+        UserDetails user = authService.loadUserByUsername(email);
+
+        SecurityContextHolder.getContext().setAuthentication(createAuthentication(user));
     }
 
     private UsernamePasswordAuthenticationToken createAuthentication(UserDetails user) {
         return new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
     }
 
-    private String recoverToken(HttpServletRequest request) {
-        return Optional.ofNullable(request.getHeader("Authorization"))
-                .filter(header -> !header.isBlank() && header.startsWith("Bearer"))
-                .map(header -> header.substring("Bearer".length()))
-                .orElse(null);
+    private String extractAccessToken(HttpServletRequest request) {
+        String authorizationHeader = request.getHeader("Authorization");
+
+        if (authorizationHeader.isBlank() || !authorizationHeader.startsWith("Bearer ")) {
+            throw new InvalidTokenException("Invalid token");
+        }
+
+        return authorizationHeader.substring(7);
     }
 
 }
