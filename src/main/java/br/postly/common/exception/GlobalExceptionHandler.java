@@ -18,7 +18,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(WebException.class)
     public ResponseEntity<ErrorResponse> handleCustomException(WebException ex) {
         return ResponseEntity
-                .status(ex.getStatus())
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorResponse(Instant.now(), ex.getMessage()));
     }
 

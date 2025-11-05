@@ -38,7 +38,7 @@ public class AuthService implements UserDetailsService {
             User user = new User(email, encryptedPassword, Role.USER);
             userRepository.save(user);
         } catch (Exception e) {
-            throw new WebException("Error saving user: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+            throw new WebException("Error while saving user: " + e.getMessage());
         }
     }
 }
