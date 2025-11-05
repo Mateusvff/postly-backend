@@ -49,7 +49,8 @@ public class AuthenticationController {
     @Operation(summary = "Authenticate user", description = "Authenticates with email and password and returns a JWT access token")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Authenticated", content = @Content(schema = @Schema(implementation = AuthResponse.class))),
-            @ApiResponse(responseCode = "401", description = "Invalid credentials", content = @Content()),
+            @ApiResponse(responseCode = "400", description = "Bad Request", content = @Content()),
+            @ApiResponse(responseCode = "401", description = "Invalid credentials", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @PostMapping(value = "/login", produces = APPLICATION_JSON_VALUE, consumes = APPLICATION_JSON_VALUE)

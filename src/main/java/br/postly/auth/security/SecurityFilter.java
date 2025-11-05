@@ -1,7 +1,7 @@
 package br.postly.auth.security;
 
 import br.postly.auth.exceptions.InvalidTokenException;
-import br.postly.auth.service.AuthenticationService;
+import br.postly.auth.service.CustomUserDetailsService;
 import br.postly.auth.service.TokenService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -21,19 +21,27 @@ import java.io.IOException;
 public class SecurityFilter extends OncePerRequestFilter {
 
     private final TokenService tokenService;
-    private final AuthenticationService authService;
+    private final CustomUserDetailsService userDetailsService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        authenticateUser(request);
+        if (!isPublicEndpoint(request)) {
+            authenticateUser(request);
+        }
+
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isPublicEndpoint(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return path.startsWith("/auth/") || path.startsWith("/v3/api-docs") || path.startsWith("/swagger-ui");
     }
 
     private void authenticateUser(HttpServletRequest request) {
         String accessToken = extractAccessToken(request);
 
         String email = tokenService.validateToken(accessToken);
-        UserDetails user = authService.loadUserByUsername(email);
+        UserDetails user = userDetailsService.loadUserByUsername(email);
 
         SecurityContextHolder.getContext().setAuthentication(createAuthentication(user));
     }
