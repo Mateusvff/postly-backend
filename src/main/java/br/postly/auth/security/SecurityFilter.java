@@ -1,8 +1,8 @@
 package br.postly.auth.security;
 
-import br.postly.auth.exceptions.InvalidTokenException;
-import br.postly.auth.service.CustomUserDetailsService;
-import br.postly.auth.service.TokenService;
+import br.postly.auth.domain.exceptions.InvalidTokenException;
+import br.postly.auth.domain.service.CustomUserDetailsService;
+import br.postly.auth.domain.service.TokenService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
