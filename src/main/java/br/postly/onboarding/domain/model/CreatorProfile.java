@@ -5,6 +5,8 @@ import br.postly.onboarding.domain.enums.MainGoal;
 import br.postly.onboarding.domain.enums.OnboardingStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -13,6 +15,8 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.Set;
@@ -36,14 +40,17 @@ public class CreatorProfile {
     private String niche;
 
     @Column(name = "main_goal")
+    @Enumerated(EnumType.STRING)
     private MainGoal mainGoal;
 
     @Column(name = "post_per_week")
     private Integer postPerWeek;
 
     @Column(name = "ig_references")
+    @JdbcTypeCode(SqlTypes.JSON)
     private Set<String> igReferences;
 
+    @Enumerated(EnumType.STRING)
     private OnboardingStatus status;
 
     private String comments;
