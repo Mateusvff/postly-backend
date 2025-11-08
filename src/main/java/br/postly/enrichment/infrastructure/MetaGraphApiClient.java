@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @FeignClient(name = "metaGraph", url = "${meta.graph.baseurl}")
-public interface MetaGraphClient {
+public interface MetaGraphApiClient {
 
     @GetMapping(value = "/me/accounts")
     MetaPageResponse listPages(@RequestParam("access_token") String accessToken);

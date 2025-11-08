@@ -10,7 +10,7 @@ import br.postly.enrichment.domain.model.MetaPageToken;
 import br.postly.enrichment.domain.repository.IgReferenceMediaContentRepository;
 import br.postly.enrichment.domain.repository.IgReferenceRepository;
 import br.postly.enrichment.domain.repository.MetaPageTokenRepository;
-import br.postly.enrichment.infrastructure.MetaGraphClient;
+import br.postly.enrichment.infrastructure.MetaGraphApiClient;
 import br.postly.onboarding.domain.service.OnboardingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,7 +29,7 @@ public class MetaEnrichmentService {
     @Value("${meta.ig.user.id}")
     private String igUserId;
 
-    private final MetaGraphClient metaGraphClient;
+    private final MetaGraphApiClient metaGraphClient;
     private final OnboardingService onboardingService;
 
     private final MetaPageTokenRepository metaPageTokenRepository;
