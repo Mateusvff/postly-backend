@@ -1,7 +1,7 @@
 package br.postly.enrichment.infrastructure;
 
+import br.postly.enrichment.api.dto.BusinessDiscoveryResponse;
 import br.postly.enrichment.api.dto.MetaPageResponse;
-import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,7 +14,7 @@ public interface MetaGraphClient {
     MetaPageResponse listPages(@RequestParam("access_token") String accessToken);
 
     @GetMapping("/{igUserId}")
-    JsonNode getBusinessDiscovery(
+    BusinessDiscoveryResponse getBusinessDiscovery(
             @PathVariable("igUserId") String igUserId,
             @RequestParam("fields") String fields,
             @RequestParam("access_token") String accessToken
