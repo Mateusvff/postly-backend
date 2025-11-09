@@ -1,6 +1,7 @@
 package br.postly.onboarding.domain.service;
 
 import br.postly.auth.domain.model.User;
+import br.postly.enrichment.domain.service.MetaEnrichmentService;
 import br.postly.onboarding.api.dto.OnboardingRequest;
 import br.postly.onboarding.domain.exceptions.CreatorProfileNotFoundException;
 import br.postly.onboarding.domain.model.CreatorProfile;
@@ -19,6 +20,7 @@ public class OnboardingService {
 
     private final SubjectService subjectService;
     private final CreatorProfileRepository creatorProfileRepository;
+    private final MetaEnrichmentService metaEnrichmentService;
 
     public void onboardCreator(OnboardingRequest request) {
         User user = subjectService.getCurrentUser();
@@ -34,7 +36,8 @@ public class OnboardingService {
         creatorProfile.setPostPerWeek(request.postPerWeek());
         creatorProfile.setComments(request.comments());
 
-        creatorProfileRepository.save(creatorProfile);
+        CreatorProfile savedProfile = creatorProfileRepository.save(creatorProfile);
+        metaEnrichmentService.enrichReferences(savedProfile);
     }
 
     public Set<String> getUserIgReferences() {

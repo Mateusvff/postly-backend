@@ -4,6 +4,7 @@ import br.postly.enrichment.api.dto.BusinessDiscoveryResponse;
 import br.postly.enrichment.api.dto.businessdiscovery.MediaRecord;
 import br.postly.enrichment.domain.enums.MetaTemplate;
 import br.postly.enrichment.domain.exceptions.MetaPageTokenNotFoundException;
+import br.postly.enrichment.domain.exceptions.ProcessReferencesException;
 import br.postly.enrichment.domain.model.IgReference;
 import br.postly.enrichment.domain.model.IgReferenceMediaContent;
 import br.postly.enrichment.domain.model.MetaPageToken;
@@ -11,16 +12,19 @@ import br.postly.enrichment.domain.repository.IgReferenceMediaContentRepository;
 import br.postly.enrichment.domain.repository.IgReferenceRepository;
 import br.postly.enrichment.domain.repository.MetaPageTokenRepository;
 import br.postly.enrichment.infrastructure.MetaGraphApiClient;
-import br.postly.onboarding.domain.service.OnboardingService;
+import br.postly.onboarding.domain.enums.OnboardingStatus;
+import br.postly.enrichment.domain.mapper.IgReferenceMapper;
+import br.postly.enrichment.domain.mapper.MediaContentMapper;
+import br.postly.onboarding.domain.model.CreatorProfile;
+import br.postly.onboarding.domain.repository.CreatorProfileRepository;
+import br.postly.enrichment.domain.util.EngagementCalculator;
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -30,58 +34,55 @@ public class MetaEnrichmentService {
     private String igUserId;
 
     private final MetaGraphApiClient metaGraphClient;
-    private final OnboardingService onboardingService;
+    private final EngagementCalculator engagementCalculator;
 
-    private final MetaPageTokenRepository metaPageTokenRepository;
+    private final IgReferenceMapper igReferenceMapper;
+    private final MediaContentMapper mediaContentMapper;
+
     private final IgReferenceRepository igReferenceRepository;
+    private final MetaPageTokenRepository metaPageTokenRepository;
+    private final CreatorProfileRepository creatorProfileRepository;
     private final IgReferenceMediaContentRepository igReferenceMediaContentRepository;
 
-    public void enrichReferences() {
-        String pageAccessToken = retrievePageAccessToken();
-        Set<String> userIgReferences = onboardingService.getUserIgReferences();
+    @Async
+    public void enrichReferences(CreatorProfile creatorProfile) {
+        try {
+            String pageAccessToken = retrievePageAccessToken();
 
-        for (String igReferenceUsername : userIgReferences) {
-            processIgReference(igReferenceUsername, pageAccessToken);
+            for (String igReferenceUsername : creatorProfile.getIgReferences()) {
+                processIgReference(creatorProfile, igReferenceUsername, pageAccessToken);
+            }
+            creatorProfile.setStatus(OnboardingStatus.COMPLETED);
+        } catch (Exception e) {
+            creatorProfile.setStatus(OnboardingStatus.FAILED);
+        } finally {
+            creatorProfileRepository.save(creatorProfile);
         }
     }
 
-    private void processIgReference(String igReferenceUsername, String pageAccessToken) {
-        String fields = String.format(MetaTemplate.BUSINESS_DISCOVERY_FIELDS_TEMPLATE.getTemplate(), igReferenceUsername);
-        BusinessDiscoveryResponse businessDiscoveryResponse = metaGraphClient.getBusinessDiscovery(igUserId, fields, pageAccessToken);
+    private void processIgReference(CreatorProfile creatorProfile, String igReferenceUsername, String pageAccessToken) throws ProcessReferencesException {
+        try {
+            String fields = String.format(MetaTemplate.BUSINESS_DISCOVERY_FIELDS_TEMPLATE.getTemplate(), igReferenceUsername);
+            BusinessDiscoveryResponse businessDiscoveryResponse = metaGraphClient.getBusinessDiscovery(igUserId, fields, pageAccessToken);
 
-        List<MediaRecord> topEngagedPosts = getTopEngagedPosts(businessDiscoveryResponse);
+            List<MediaRecord> topEngagedPosts = engagementCalculator.getTopEngagedPosts(businessDiscoveryResponse);
 
-        IgReference igReference = createIgReferenceFromResponse(businessDiscoveryResponse);
-        igReferenceRepository.save(igReference);
+            IgReference igReference = igReferenceMapper.mapToIgReference(businessDiscoveryResponse);
+            igReference.setCreatorProfile(creatorProfile);
+            igReferenceRepository.save(igReference);
 
-        saveMediaContents(topEngagedPosts, igReference);
-    }
+            saveMediaContents(topEngagedPosts, igReference);
+        } catch (FeignException.FeignClientException e) {
+            throw new ProcessReferencesException("Error processing IG reference: " + igReferenceUsername + ". Reason: " + e.getMessage());
+        }
 
-    private IgReference createIgReferenceFromResponse(BusinessDiscoveryResponse response) {
-        IgReference igReference = new IgReference();
-        igReference.setUsername(response.businessDiscovery().name());
-        igReference.setBiography(response.businessDiscovery().biography());
-        igReference.setProfilePictureUrl(response.businessDiscovery().profilePictureUrl());
-        return igReference;
     }
 
     private void saveMediaContents(List<MediaRecord> mediaRecords, IgReference igReference) {
         mediaRecords.forEach(mediaRecord -> {
-            IgReferenceMediaContent mediaContent = createMediaContentFromRecord(mediaRecord, igReference);
+            IgReferenceMediaContent mediaContent = mediaContentMapper.mapToMediaContent(mediaRecord, igReference);
             igReferenceMediaContentRepository.save(mediaContent);
         });
-    }
-
-    private IgReferenceMediaContent createMediaContentFromRecord(MediaRecord mediaRecord, IgReference igReference) {
-        IgReferenceMediaContent mediaContent = new IgReferenceMediaContent();
-        mediaContent.setIgReference(igReference);
-        mediaContent.setCaption(mediaRecord.caption());
-        mediaContent.setMediaUrl(mediaRecord.mediaUrl());
-        mediaContent.setMediaType(mediaRecord.mediaType());
-        mediaContent.setMediaProductType(mediaRecord.mediaProductType());
-        mediaContent.setLikeCount(mediaRecord.likeCount());
-        mediaContent.setCommentsCount(mediaRecord.commentsCount());
-        return mediaContent;
     }
 
     private String retrievePageAccessToken() {
@@ -90,30 +91,4 @@ public class MetaEnrichmentService {
         return metaPageToken.getPageAccessToken();
     }
 
-    private List<MediaRecord> getTopEngagedPosts(BusinessDiscoveryResponse businessDiscoveryResponse) {
-        if (!isBusinessDiscoveryValid(businessDiscoveryResponse)) {
-            return Collections.emptyList();
-        }
-
-        Comparator<MediaRecord> byEngagementDescending = Comparator
-                .comparingInt(this::calculateEngagement)
-                .reversed();
-
-        return businessDiscoveryResponse.businessDiscovery().media().data().stream()
-                .filter(Objects::nonNull)
-                .sorted(byEngagementDescending)
-                .limit(10)
-                .toList();
-    }
-
-    private int calculateEngagement(MediaRecord media) {
-        return (media.likeCount() == null ? 0 : media.likeCount()) +
-                (media.commentsCount() == null ? 0 : media.commentsCount());
-    }
-
-    private boolean isBusinessDiscoveryValid(BusinessDiscoveryResponse businessDiscoveryResponse) {
-        return businessDiscoveryResponse != null &&
-                businessDiscoveryResponse.businessDiscovery().media() != null &&
-                businessDiscoveryResponse.businessDiscovery().media().data() != null;
-    }
 }
