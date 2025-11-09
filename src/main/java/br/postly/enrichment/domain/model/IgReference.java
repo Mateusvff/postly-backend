@@ -1,11 +1,13 @@
 package br.postly.enrichment.domain.model;
 
+import br.postly.onboarding.domain.model.CreatorProfile;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.Getter;
@@ -37,6 +39,9 @@ public class IgReference {
 
     @Column(name = "updated_at")
     private Instant updatedAt;
+
+    @ManyToOne
+    private CreatorProfile creatorProfile;
 
     @OneToMany(mappedBy = "igReference", cascade = CascadeType.ALL)
     private List<IgReferenceMediaContent> mediaContents;
