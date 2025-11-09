@@ -5,27 +5,28 @@ import br.postly.enrichment.api.dto.businessdiscovery.MediaRecord;
 import br.postly.enrichment.domain.enums.MetaTemplate;
 import br.postly.enrichment.domain.exceptions.MetaPageTokenNotFoundException;
 import br.postly.enrichment.domain.exceptions.ProcessReferencesException;
+import br.postly.enrichment.domain.mapper.IgReferenceMapper;
+import br.postly.enrichment.domain.mapper.MediaContentMapper;
 import br.postly.enrichment.domain.model.IgReference;
 import br.postly.enrichment.domain.model.IgReferenceMediaContent;
 import br.postly.enrichment.domain.model.MetaPageToken;
 import br.postly.enrichment.domain.repository.IgReferenceMediaContentRepository;
 import br.postly.enrichment.domain.repository.IgReferenceRepository;
 import br.postly.enrichment.domain.repository.MetaPageTokenRepository;
+import br.postly.enrichment.domain.util.EngagementCalculator;
 import br.postly.enrichment.infrastructure.MetaGraphApiClient;
 import br.postly.onboarding.domain.enums.OnboardingStatus;
-import br.postly.enrichment.domain.mapper.IgReferenceMapper;
-import br.postly.enrichment.domain.mapper.MediaContentMapper;
 import br.postly.onboarding.domain.model.CreatorProfile;
 import br.postly.onboarding.domain.repository.CreatorProfileRepository;
-import br.postly.enrichment.domain.util.EngagementCalculator;
-import feign.FeignException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MetaEnrichmentService {
@@ -53,7 +54,8 @@ public class MetaEnrichmentService {
                 processIgReference(creatorProfile, igReferenceUsername, pageAccessToken);
             }
             creatorProfile.setStatus(OnboardingStatus.COMPLETED);
-        } catch (Exception e) {
+        } catch (ProcessReferencesException | MetaPageTokenNotFoundException e) {
+            log.error("Error processing IG references for creator {} : {}", creatorProfile.getId(), e.getMessage());
             creatorProfile.setStatus(OnboardingStatus.FAILED);
         } finally {
             creatorProfileRepository.save(creatorProfile);
@@ -72,7 +74,7 @@ public class MetaEnrichmentService {
             igReferenceRepository.save(igReference);
 
             saveMediaContents(topEngagedPosts, igReference);
-        } catch (FeignException.FeignClientException e) {
+        } catch (Exception e) {
             throw new ProcessReferencesException("Error processing IG reference: " + igReferenceUsername + ". Reason: " + e.getMessage());
         }
 
@@ -85,7 +87,7 @@ public class MetaEnrichmentService {
         });
     }
 
-    private String retrievePageAccessToken() {
+    private String retrievePageAccessToken() throws MetaPageTokenNotFoundException {
         MetaPageToken metaPageToken = metaPageTokenRepository.findTopByOrderByCreatedAtDesc()
                 .orElseThrow(() -> new MetaPageTokenNotFoundException("No meta page token found"));
         return metaPageToken.getPageAccessToken();

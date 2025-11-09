@@ -3,15 +3,13 @@ package br.postly.onboarding.domain.service;
 import br.postly.auth.domain.model.User;
 import br.postly.enrichment.domain.service.MetaEnrichmentService;
 import br.postly.onboarding.api.dto.OnboardingRequest;
-import br.postly.onboarding.domain.exceptions.CreatorProfileNotFoundException;
+import br.postly.onboarding.domain.enums.OnboardingStatus;
 import br.postly.onboarding.domain.model.CreatorProfile;
 import br.postly.onboarding.domain.repository.CreatorProfileRepository;
 import br.postly.shared.service.SubjectService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-
-import java.util.Set;
 
 @Slf4j
 @Service
@@ -32,20 +30,12 @@ public class OnboardingService {
         creatorProfile.setNiche(request.niche());
         creatorProfile.setMainGoal(request.mainGoal());
         creatorProfile.setIgReferences(request.igReferences());
-        creatorProfile.setStatus(request.status());
+        creatorProfile.setStatus(OnboardingStatus.PROCESSING);
         creatorProfile.setPostPerWeek(request.postPerWeek());
         creatorProfile.setComments(request.comments());
 
-        CreatorProfile savedProfile = creatorProfileRepository.save(creatorProfile);
-        metaEnrichmentService.enrichReferences(savedProfile);
-    }
-
-    public Set<String> getUserIgReferences() {
-        User user = subjectService.getCurrentUser();
-
-        return creatorProfileRepository.findByUserId(user.getId())
-                .map(CreatorProfile::getIgReferences)
-                .orElseThrow(() -> new CreatorProfileNotFoundException("Onboarding not found for user id: " + user.getId()));
+        CreatorProfile savedCreator = creatorProfileRepository.save(creatorProfile);
+        metaEnrichmentService.enrichReferences(savedCreator);
     }
 
 }

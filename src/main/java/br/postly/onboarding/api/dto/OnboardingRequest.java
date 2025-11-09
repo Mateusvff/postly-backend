@@ -1,7 +1,6 @@
 package br.postly.onboarding.api.dto;
 
 import br.postly.onboarding.domain.enums.MainGoal;
-import br.postly.onboarding.domain.enums.OnboardingStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -13,7 +12,6 @@ public record OnboardingRequest(
         @NotBlank @Size(max = 50) String niche,
         @NotNull MainGoal mainGoal,
         @NotNull Integer postPerWeek,
-        @NotNull OnboardingStatus status,
         @NotNull Set<String> igReferences,
         @Size(max = 255) String comments
 ) {
