@@ -31,7 +31,7 @@ public class OnboardingController {
             @ApiResponse(responseCode = "400", description = "Bad Request", content = @Content()),
             @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
-    @PostMapping(value = "/create", produces = APPLICATION_JSON_VALUE, consumes = APPLICATION_JSON_VALUE)
+    @PostMapping(value = "/complete", produces = APPLICATION_JSON_VALUE, consumes = APPLICATION_JSON_VALUE)
     public ResponseEntity<Void> onboardCreator(@Valid @RequestBody OnboardingRequest onboardingRequest) {
         onboardingService.onboardCreator(onboardingRequest);
         return ResponseEntity.noContent().build();
