@@ -24,7 +24,9 @@ public class OnboardingService {
         User user = subjectService.getCurrentUser();
 
         log.info("Onboarding creator with id: {}", user.getId());
-        CreatorProfile creatorProfile = new CreatorProfile();
+        CreatorProfile creatorProfile = creatorProfileRepository.findByUserId(user.getId())
+                .orElse(new CreatorProfile());
+
         creatorProfile.setUser(user);
         creatorProfile.setIgUsername(request.igUsername());
         creatorProfile.setNiche(request.niche());
