@@ -5,7 +5,9 @@ import lombok.Getter;
 @Getter
 public enum OnboardingStatus {
     PROCESSING,
-    COMPLETED,
-    FAILED,
-    UPDATED
+    ENRICHMENT_COMPLETED,
+    ENRICHMENT_FAILED,
+    PLANNING_IN_PROGRESS,
+    PLANNING_COMPLETED,
+    PLANNING_FAILED
 }

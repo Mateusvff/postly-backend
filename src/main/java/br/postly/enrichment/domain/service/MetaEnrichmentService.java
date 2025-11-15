@@ -18,9 +18,13 @@ import br.postly.enrichment.infrastructure.MetaGraphApiClient;
 import br.postly.onboarding.domain.enums.OnboardingStatus;
 import br.postly.onboarding.domain.model.CreatorProfile;
 import br.postly.onboarding.domain.repository.CreatorProfileRepository;
+import br.postly.shared.event.EnrichmentCompletedEvent;
+import br.postly.shared.event.OnboardingCompletedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -40,23 +44,30 @@ public class MetaEnrichmentService {
     private final IgReferenceMapper igReferenceMapper;
     private final MediaContentMapper mediaContentMapper;
 
+    private final ApplicationEventPublisher eventPublisher;
     private final IgReferenceRepository igReferenceRepository;
     private final MetaPageTokenRepository metaPageTokenRepository;
     private final CreatorProfileRepository creatorProfileRepository;
     private final IgReferenceMediaContentRepository igReferenceMediaContentRepository;
 
     @Async
-    public void enrichReferences(CreatorProfile creatorProfile) {
+    @EventListener
+    public void enrichReferences(OnboardingCompletedEvent event) {
+        CreatorProfile creatorProfile = event.getCreatorProfile();
+        log.info("Handling enrichment for profile id: {}", creatorProfile.getId());
+
         try {
             String pageAccessToken = retrievePageAccessToken();
 
             for (String igReferenceUsername : creatorProfile.getIgReferences()) {
                 processIgReference(creatorProfile, igReferenceUsername, pageAccessToken);
             }
-            creatorProfile.setStatus(OnboardingStatus.COMPLETED);
+
+            creatorProfile.setStatus(OnboardingStatus.ENRICHMENT_COMPLETED);
+            eventPublisher.publishEvent(new EnrichmentCompletedEvent(creatorProfile));
         } catch (ProcessReferencesException | MetaPageTokenNotFoundException e) {
             log.error("Error processing IG references for creator {} : {}", creatorProfile.getId(), e.getMessage());
-            creatorProfile.setStatus(OnboardingStatus.FAILED);
+            creatorProfile.setStatus(OnboardingStatus.ENRICHMENT_FAILED);
         } finally {
             creatorProfileRepository.save(creatorProfile);
         }

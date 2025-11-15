@@ -1,0 +1,2 @@
+ALTER TABLE tb_creator_profile
+    DROP CONSTRAINT chk_creator_profile_status;
